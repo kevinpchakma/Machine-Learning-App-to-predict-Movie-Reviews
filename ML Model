@@ -1,0 +1,121 @@
+import nltk
+import random
+import pickle
+from nltk.classify.scikitlearn import SklearnClassifier
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.svm import SVC, LinearSVC, NuSVC
+from nltk.classify import ClassifierI
+from statistics import mode
+from nltk.tokenize import word_tokenize
+
+
+# Define a voting classifier to combine multiple machine learning classifiers
+class VoteClassifier(ClassifierI):
+    def __init__(self, *classifiers):
+        # Store the classifiers in a list
+        self._classifiers = classifiers
+
+    def classify(self, features):
+        # Collect the votes from each classifier
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+        # Return the mode (most common) vote
+        return mode(votes)
+
+    def confidence(self, features):
+        # Collect the votes from each classifier
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+
+        # Calculate the confidence as the ratio of the number of votes for the mode
+        # to the total number of votes
+        choice_votes = votes.count(mode(votes))
+        conf = choice_votes / len(votes)
+        return conf
+
+# Load the movie review dataset from the NLTK library
+movie_reviews = nltk.corpus.movie_reviews
+
+# Combine the words of each movie review with its associated category (positive or negative)
+documents = [(list(movie_reviews.words(fileid)), category)
+             for category in movie_reviews.categories()
+             for fileid in movie_reviews.fileids(category)]
+
+# Shuffle the dataset to ensure randomness
+random.shuffle(documents)
+
+# Create a list of all the words in the movie review dataset
+all_words = [w.lower() for w in movie_reviews.words()]
+
+# Remove stop words and create a frequency distribution of the remaining words
+all_words = nltk.FreqDist(all_words)
+word_features = list(all_words.keys())[:3000]
+
+# Define a function to find the presence of the most common words in each movie review
+def find_features(document):
+    # Create a set of the words in the document
+    words = set(document)
+    # Create a dictionary to store the presence of each word feature
+    features = {}
+    for w in word_features:
+        features[w] = (w in words)
+    return features
+
+# Create a feature set for each movie review in the dataset
+featuresets = [(find_features(rev), category) for (rev, category) in documents]
+
+# Split the dataset into training and testing sets
+training_set = featuresets[:1900]
+testing_set = featuresets[1900:]
+
+# Train a Multinomial Naive Bayes classifier
+class
+MNB_classifier = SklearnClassifier(MultinomialNB())
+MNB_classifier.train(training_set)
+print("MultinomialNB accuracy percent:", (nltk.classify.accuracy(MNB_classifier, testing_set))*100)
+
+# Train a Bernoulli Naive Bayes classifier
+BNB_classifier = SklearnClassifier(BernoulliNB())
+BNB_classifier.train(training_set)
+print("BernoulliNB accuracy percent:", (nltk.classify.accuracy(BNB_classifier, testing_set))*100)
+
+# Train a Logistic Regression classifier
+LogisticRegression_classifier = SklearnClassifier(LogisticRegression())
+LogisticRegression_classifier.train(training_set)
+print("LogisticRegression accuracy percent:", (nltk.classify.accuracy(LogisticRegression_classifier, testing_set))*100)
+
+# Train a Stochastic Gradient Descent classifier
+SGD_classifier = SklearnClassifier(SGDClassifier())
+SGD_classifier.train(training_set)
+print("SGDClassifier accuracy percent:", (nltk.classify.accuracy(SGD_classifier, testing_set))*100)
+
+# Train a Support Vector Machine classifier
+SVC_classifier = SklearnClassifier(SVC())
+SVC_classifier.train(training_set)
+print("SVC accuracy percent:", (nltk.classify.accuracy(SVC_classifier, testing_set))*100)
+
+# Train a Linear Support Vector Machine classifier
+LinearSVC_classifier = SklearnClassifier(LinearSVC())
+LinearSVC_classifier.train(training_set)
+print("LinearSVC accuracy percent:", (nltk.classify.accuracy(LinearSVC_classifier, testing_set))*100)
+
+# Train a Nu Support Vector Machine classifier
+NuSVC_classifier = SklearnClassifier(NuSVC())
+NuSVC_classifier.train(training_set)
+print("NuSVC accuracy percent:", (nltk.classify.accuracy(NuSVC_classifier, testing_set))*100)
+
+# Create a vote classifier using the above classifiers
+voted_classifier = VoteClassifier(MNB_classifier, BNB_classifier, LogisticRegression_classifier, SGD_classifier, SVC_classifier, LinearSVC_classifier, NuSVC_classifier)
+
+# Evaluate the accuracy of the vote classifier
+print("Voted classifier accuracy percent:", (nltk.classify.accuracy(voted_classifier, testing_set))*100)
+
+# Find the confidence of the classifier for each movie review in the test set
+def sentiment(text):
+    feats = find_features(word_tokenize(text))
+    return voted_classifier.classify(feats), voted_classifier.confidence(feats)
